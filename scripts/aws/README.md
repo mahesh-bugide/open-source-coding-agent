@@ -1,55 +1,58 @@
-# AWS One-Click EC2 Deployment Scripts
+# AWS Single-Instance Minimal Deployment
 
-These scripts support a near one-click deployment flow for the API + vLLM stack on a GPU EC2 instance.
+Fastest path to a working deployment: one EC2 instance, no ECR, no CodeBuild, no Terraform, no multi-instance networking.
 
-## Files
+## 1. Launch one instance
 
-- `one_click.env.example`: configuration template.
-- `one_click.env`: ready-to-edit local config file.
-- `build_and_push_ecr.sh`: builds and pushes API + vLLM images to ECR.
-- `render_user_data.sh`: renders a concrete EC2 user-data script from env values.
-- `user-data/bootstrap_gpu_agent.tpl.sh`: user-data template executed on first boot.
+- AMI: `Deep Learning Base AMI with Single CUDA (Ubuntu 24.04)` (GPU driver + CUDA + Docker + NVIDIA Container Toolkit preinstalled).
+- Instance type: `g4dn.xlarge` or `g4dn.2xlarge` (whatever has capacity). A non-GPU type (e.g. `t3.large`) also works if you only need mock-model validation first.
+- IAM role: `AmazonSSMManagedInstanceCore` only.
+- Security group: no public inbound rules needed; use Session Manager.
 
-## Quick Start
+## 2. Connect and bootstrap
 
-1. Edit env file:
+Connect via Session Manager, then:
 
 ```bash
-nano scripts/aws/one_click.env
+export GIT_REPO_URL="https://github.com/your-org/your-repo"
+curl -fsSL https://raw.githubusercontent.com/your-org/your-repo/main/scripts/aws/bootstrap_single_instance.sh | bash
 ```
 
-Set `AWS_ACCOUNT_ID` to a 12-digit value before running scripts.
-
-2. Build and push images:
+Or, if the repo is already cloned on the instance:
 
 ```bash
-bash scripts/aws/build_and_push_ecr.sh
+cd ~/coding-agent
+bash scripts/aws/bootstrap_single_instance.sh
 ```
 
-3. Render user-data script:
+This builds and starts `mock-model` + `api` only, and confirms `/health` and `/ready` respond — no GPU required for this step.
+
+## 3. Switch to the real model (GPU instance only)
 
 ```bash
-bash scripts/aws/render_user_data.sh
-```
+nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.3.2-base-ubuntu22.04 nvidia-smi
 
-4. Create/update an EC2 Launch Template:
-
-- Use a GPU-ready AMI (Deep Learning AMI preferred)
-- Use g4dn.2xlarge or larger
-- Attach IAM instance profile with:
-  - AmazonEC2ContainerRegistryReadOnly
-  - AmazonSSMManagedInstanceCore
-- Paste `scripts/aws/user-data/bootstrap_gpu_agent.sh` into User data
-
-5. Launch instance from template and verify:
-
-```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile gpu up -d --build vllm api
 curl -sS http://127.0.0.1:8080/health
-curl -sS http://127.0.0.1:8080/ready
 ```
 
-## Notes
+## 4. Run one end-to-end task
 
-- vLLM is bound to localhost by default (`127.0.0.1`).
-- API is exposed on host port from `API_PORT`.
-- SQLite is used for simple startup; no external Postgres/Redis required for first run.
+```bash
+API_KEY=dev-local-key
+WS=/home/ubuntu/coding-agent/examples/sample-repository
+
+SESSION_ID=$(curl -sS -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
+  -d "{\"workspace_path\":\"$WS\"}" http://127.0.0.1:8080/v1/sessions | jq -r .session_id)
+
+curl -sS -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{"message":"Read TASKS.md and suggest one safe small fix, then run tests."}' \
+  http://127.0.0.1:8080/v1/sessions/$SESSION_ID/messages | jq
+```
+
+## Only add later, if actually needed
+
+- **ECR + CI build pipeline** — once you need repeatable rebuilds without re-cloning on the box each time.
+- **Second instance for API** — once GPU cost or scaling requires separating API from the model.
+- **Load balancer / Terraform** — once you have more than one instance to manage consistently.

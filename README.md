@@ -10,16 +10,16 @@ A VS Code extension sends a developer task to a backend agent service. The agent
 - Typed tool runtime for repository operations.
 - SSE streaming of agent progress/events to VS Code.
 - Mock model mode for local development without GPU.
-- vLLM inference service scaffold for Qwen3-Coder on NVIDIA L40S.
-- Terraform scaffold for AWS ECS/ALB/RDS/Redis/S3/GPU topology.
+- vLLM inference service for open-source coding models (runs on the same EC2 instance as the API by default).
+- Minimal single-instance AWS deployment path (no Terraform, no ECS/ALB/RDS required).
 
 ## 2) Architecture
 
 High-level flow:
 
-Developer -> VS Code Extension -> ALB -> API/Agent service -> Tooling + Sandbox + Model Gateway -> vLLM
+Developer -> VS Code Extension -> API service (FastAPI) -> Tooling + Sandbox + Model Gateway -> vLLM
 
-Supporting services: PostgreSQL, Redis, S3, CloudWatch, Secrets Manager.
+API persists to SQLite by default; cache falls back to in-memory automatically if Redis isn't present.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -88,17 +88,13 @@ pytest -q
 
 ## 7) Deploying to AWS
 
-Terraform scaffold:
+Minimal single-instance path (default):
 
 ```bash
-cd infrastructure/terraform
-terraform init
-terraform plan -var-file=environments/dev/terraform.tfvars
+bash scripts/aws/bootstrap_single_instance.sh
 ```
 
-See [AWS.md](AWS.md) and [DEPLOYMENT.md](DEPLOYMENT.md).
-
-For Launch Template based one-click EC2 deployments, see [scripts/aws/README.md](scripts/aws/README.md).
+See [AWS.md](AWS.md), [DEPLOYMENT.md](DEPLOYMENT.md), and [scripts/aws/README.md](scripts/aws/README.md).
 
 ## 8) VS Code extension setup
 
@@ -111,10 +107,9 @@ For Launch Template based one-click EC2 deployments, see [scripts/aws/README.md]
 ## Project layout
 
 - [services/api](services/api): FastAPI API + orchestrator + tools
-- [services/agent](services/agent): Agent worker placeholder service container
 - [services/mock-model](services/mock-model): Local mock OpenAI-compatible endpoint
 - [vscode-extension](vscode-extension): VS Code extension MVP
 - [inference](inference): vLLM service container and startup scripts
-- [infrastructure/terraform](infrastructure/terraform): AWS IaC scaffold
+- [scripts/aws](scripts/aws): minimal single-instance AWS bootstrap
 - [examples/sample-repository](examples/sample-repository): Evaluation target repo
 - [evaluation](evaluation): agent task evaluation runner

@@ -1,0 +1,8 @@
+services:
+  api:
+    environment:
+      MODEL_MODE: openai
+      MODEL_BASE_URL: http://vllm:8001/v1
+      MODEL_NAME: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    depends_on:
+      - vllm

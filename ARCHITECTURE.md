@@ -9,7 +9,7 @@
 - Repository context builder: bounded context via file tree + search + targeted reads.
 - Model gateway: mock mode or OpenAI-compatible vLLM backend.
 - Sandbox manager: local or Docker command execution with limits.
-- Data layer: PostgreSQL persistence for sessions, runs, calls, usage.
+- Data layer: SQLite persistence for sessions, runs, calls, usage (file-backed, no external DB required).
 
 ## State machine
 
@@ -29,7 +29,7 @@ Stop conditions:
 
 ## Security boundaries
 
-- vLLM kept private (no public ingress).
+- vLLM kept private (no public ingress; reachable only from the API on the same instance/VPC).
 - Agent execution in sandbox copy of repository.
 - Path traversal checks on file tools.
 - Command timeout and resource controls.

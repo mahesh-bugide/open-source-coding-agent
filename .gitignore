@@ -15,8 +15,5 @@ out/
 *.log
 coverage.xml
 htmlcov/
-terraform.tfstate
-terraform.tfstate.*
-.terraform/
-*.tfvars
-!.tfvars.example
+*.db
+data/

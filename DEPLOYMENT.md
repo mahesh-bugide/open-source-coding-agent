@@ -2,29 +2,27 @@
 
 ## Local MVP deployment
 
-1. Start PostgreSQL, Redis, mock model.
-2. Start API service with `MODEL_MODE=mock`.
+1. Start with mock model (no GPU required): `docker compose up -d --build mock-model api`.
+2. Verify `/health` and `/ready`.
 3. Build and run VS Code extension.
 
-## AWS deployment approach
+## AWS deployment: single instance (default path)
 
-1. Build and push images to ECR.
-2. Apply Terraform in [infrastructure/terraform](infrastructure/terraform).
-3. Deploy ECS services (API + agent) in private subnets.
-4. Deploy vLLM on private GPU EC2 capacity.
-5. Expose only ALB publicly; keep vLLM private.
+No Terraform, no ECR, no CodeBuild, no multi-instance networking required. See [scripts/aws/README.md](scripts/aws/README.md) for full steps.
 
-## AWS one-click EC2 deployment (no Terraform changes)
+1. Launch one EC2 instance using AMI `Deep Learning Base AMI with Single CUDA (Ubuntu 24.04)`.
+2. Connect via Session Manager, clone the repo, run [scripts/aws/bootstrap_single_instance.sh](scripts/aws/bootstrap_single_instance.sh).
+3. Validate with mock model first, then switch to the real model:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile gpu up -d --build vllm api
+   ```
+4. Keep the instance private; use SSM for all access instead of public inbound rules.
 
-Use the scripts in [scripts/aws/README.md](scripts/aws/README.md) to prepare images and launch a GPU EC2 host from a Launch Template.
+## Scaling up (only if actually needed)
 
-1. Edit [scripts/aws/one_click.env](scripts/aws/one_click.env) (or copy from [scripts/aws/one_click.env.example](scripts/aws/one_click.env.example)) and set values.
-2. Run `bash scripts/aws/build_and_push_ecr.sh`.
-3. Run `bash scripts/aws/render_user_data.sh`.
-4. Paste [scripts/aws/user-data/bootstrap_gpu_agent.sh](scripts/aws/user-data/bootstrap_gpu_agent.sh) into Launch Template user data.
-5. Launch an instance from that template.
-
-This path is useful when network primitives are pre-existing and cannot be changed quickly.
+- Split API and vLLM onto separate instances once GPU cost or independent scaling matters.
+- Add ECR + a build pipeline once you need repeatable rebuilds without re-cloning on the box.
+- Add a load balancer / IaC only once managing more than one instance by hand becomes painful.
 
 ## Release checklist
 
@@ -32,4 +30,5 @@ This path is useful when network primitives are pre-existing and cannot be chang
 - Verify extension compile.
 - Verify health/ready endpoints.
 - Verify sample task end-to-end.
-- Validate security groups and secret injection.
+- Confirm no public inbound rules beyond what's required for your test client.
+

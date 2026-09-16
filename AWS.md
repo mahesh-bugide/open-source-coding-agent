@@ -1,61 +1,34 @@
-# AWS Infrastructure Notes
+# AWS Deployment Notes
 
-Terraform root: [infrastructure/terraform](infrastructure/terraform)
+## Architecture (minimal, single instance)
 
-## Resources included
+One EC2 instance runs `mock-model` + `api` via Docker Compose. For real inference, the same instance (GPU type) also runs `vllm`. No ECS, ALB, RDS, ElastiCache, or Terraform required for this path.
 
-- VPC, public/private subnets
-- Security groups with restricted east-west traffic
-- ALB
-- ECS cluster + services
-- ECR repositories
-- Private GPU EC2 autoscaling group for vLLM
-- RDS PostgreSQL
-- ElastiCache Redis
-- S3 artifacts bucket
-- CloudWatch log groups
-- Secrets Manager secrets
+```
+Developer -> API (EC2, Docker Compose) -> vLLM (same EC2, GPU)
+```
 
-## Traffic policy
+- API persists to SQLite (file-backed, no external DB needed).
+- Cache falls back to in-memory automatically if Redis isn't present.
+- vLLM has no public ingress — only reachable on `localhost` from the API container/process.
 
-- VS Code/clients -> ALB (public)
-- ALB -> API (private)
-- API -> Agent (private)
-- Agent -> vLLM (private)
-- API/Agent -> RDS/Redis (private)
+## One-time setup
 
-vLLM has no public ingress.
+- Launch instance from AMI `Deep Learning Base AMI with Single CUDA (Ubuntu 24.04)` — driver/CUDA/Docker/NVIDIA Container Toolkit preinstalled.
+- IAM role: `AmazonSSMManagedInstanceCore` only.
+- Security group: no public inbound rules; use Session Manager for access.
+
+## Deployment steps
+
+See [scripts/aws/README.md](scripts/aws/README.md) for the full step-by-step, including [scripts/aws/bootstrap_single_instance.sh](scripts/aws/bootstrap_single_instance.sh).
+
+## Scaling beyond one instance (only when actually needed)
+
+- **Two instances**: split API (CPU, e.g. `t3.large`) from vLLM (GPU, e.g. `g4dn.2xlarge`). Requires a security group rule allowing the API instance to reach the LLM instance's port privately.
+- **Repeatable builds**: add ECR + a build pipeline (e.g. CodeBuild) once rebuilding directly on the instance each time becomes inconvenient.
+- **Multiple instances / HA**: add a load balancer and infrastructure-as-code once managing hosts by hand becomes error-prone.
 
 ## Cost-heavy resources
 
-- GPU instance (`g6e.2xlarge`) for inference
-- RDS instance and storage
-- NAT/data transfer if enabled in future revisions
-- CloudWatch log retention growth
+- GPU instance (`g4dn.xlarge`/`g4dn.2xlarge`) — the only significant recurring cost in this minimal setup.
 
-## Terraform usage
-
-```bash
-cd infrastructure/terraform
-terraform init
-terraform validate
-terraform plan -var-file=environments/dev/terraform.tfvars
-```
-
-Do not commit real secrets in tfvars.
-
-## One-click EC2 path
-
-For an admin-light deployment path that avoids Terraform changes, use [scripts/aws/README.md](scripts/aws/README.md).
-
-Required one-time setup:
-
-- ECR repositories for API and vLLM images
-- EC2 instance profile with `AmazonEC2ContainerRegistryReadOnly` and `AmazonSSMManagedInstanceCore`
-- GPU-ready AMI for stable NVIDIA runtime bootstrapping
-
-Operational flow:
-
-1. Push images with [scripts/aws/build_and_push_ecr.sh](scripts/aws/build_and_push_ecr.sh).
-2. Render user-data from [scripts/aws/user-data/bootstrap_gpu_agent.tpl.sh](scripts/aws/user-data/bootstrap_gpu_agent.tpl.sh) using [scripts/aws/render_user_data.sh](scripts/aws/render_user_data.sh).
-3. Paste the rendered script into a Launch Template and launch a new instance.

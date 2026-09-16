@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     dev_api_key: str = Field(default="dev-local-key", alias="DEV_API_KEY")
 
     postgres_dsn: str = Field(
-        default="postgresql+psycopg://agent:agent@localhost:5432/agentdb",
+        default="sqlite+aiosqlite:///./local.db",
         alias="POSTGRES_DSN",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     model_base_url: str = Field(default="http://localhost:8001/v1", alias="MODEL_BASE_URL")
     model_api_key: str = Field(default="", alias="MODEL_API_KEY")
     model_name: str = Field(
-        default="Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8",
+        default="Qwen/Qwen2.5-Coder-1.5B-Instruct",
         alias="MODEL_NAME",
     )
 

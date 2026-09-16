@@ -96,21 +96,22 @@ Status: Implemented
 
 - Local stack boots in MOCK_MODEL mode.
 
-## Phase 5 - AWS Terraform Scaffolding
+## Phase 5 - Minimal AWS Deployment Scaffolding
 
 Status: Implemented
 
 ### Goals
 
-- Provide deployable Terraform modules/resources for ECS, ALB, RDS, Redis, S3, IAM, CloudWatch, Secrets Manager, and GPU capacity for vLLM.
+- Provide a minimal single-EC2-instance deployment path using Docker Compose (no Terraform/ECS/ALB/RDS required).
 
 ### Deliverables
 
-- `infrastructure/terraform` baseline with variables/outputs and environment tfvars examples
+- `scripts/aws/bootstrap_single_instance.sh` and `scripts/aws/README.md`
+- `docker-compose.gpu.yml` override for switching from mock model to real vLLM on the same instance
 
 ### Verification
 
-- `terraform validate` passes logically for scaffold.
+- `docker compose up -d --build mock-model api` boots and `/health`/`/ready` succeed.
 
 ## Phase 6 - Documentation + Evaluation Framework
 
@@ -151,5 +152,5 @@ Status: Implemented
 - [ ] VS Code extension run (compiled, runtime not executed in Extension Development Host)
 - [x] Agent searches/reads/edits/tests/iterates
 - [x] Diff review and apply/reject
-- [x] Agent run persisted in PostgreSQL (validated through integration test path)
-- [x] Terraform architecture scaffold complete
+- [x] Agent run persisted via SQLite (validated through integration test path)
+- [x] Minimal single-instance AWS deployment scaffold complete

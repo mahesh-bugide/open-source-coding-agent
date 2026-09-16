@@ -1,8 +1,8 @@
 FROM vllm/vllm-openai:v0.8.4
 
-ENV MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8 \
-    MAX_MODEL_LEN=32768 \
-    GPU_MEMORY_UTILIZATION=0.90
+ENV MODEL_NAME=Qwen/Qwen2.5-Coder-1.5B-Instruct \
+    MAX_MODEL_LEN=4096 \
+    GPU_MEMORY_UTILIZATION=0.85
 
 COPY start-vllm.sh /app/start-vllm.sh
 COPY config/vllm.env /app/config/vllm.env

@@ -1,22 +1,8 @@
 version: "3.9"
 
+# Minimal single-instance stack: no Postgres/Redis containers required.
+# API falls back to SQLite (file-backed) and in-memory cache automatically.
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: agent
-      POSTGRES_PASSWORD: agent
-      POSTGRES_DB: agentdb
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-
   mock-model:
     build:
       context: ./services/mock-model
@@ -28,46 +14,33 @@ services:
       context: ./services/api
     environment:
       APP_ENV: development
-      POSTGRES_DSN: postgresql+psycopg://agent:agent@postgres:5432/agentdb
-      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DSN: sqlite+aiosqlite:////app/data/agent.db
+      REDIS_URL: redis://127.0.0.1:6399/0
       MODEL_MODE: mock
       MODEL_BASE_URL: http://mock-model:8001/v1
-      MODEL_NAME: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+      MODEL_NAME: Qwen/Qwen2.5-Coder-1.5B-Instruct
       DEV_API_KEY: dev-local-key
       REQUIRE_API_KEY: "true"
       SANDBOX_MODE: local
     ports:
       - "8080:8080"
+    volumes:
+      - agent-data:/app/data
     depends_on:
-      - postgres
-      - redis
       - mock-model
 
-  agent:
-    build:
-      context: ./services/agent
-    environment:
-      API_BASE_URL: http://api:8080
-    depends_on:
-      - api
-
-  indexer:
-    build:
-      context: ./services/indexer
-    ports:
-      - "8095:8095"
-
+  # Only started with: docker compose --profile gpu up -d --build vllm
   vllm:
     build:
       context: ./inference
     profiles: ["gpu"]
     runtime: nvidia
     environment:
-      MODEL_NAME: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
-      MAX_MODEL_LEN: 32768
-      GPU_MEMORY_UTILIZATION: 0.90
+      MODEL_NAME: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      MAX_MODEL_LEN: 4096
+      GPU_MEMORY_UTILIZATION: 0.85
     ports:
       - "8002:8001"
 
 volumes:
-  postgres-data:
+  agent-data:

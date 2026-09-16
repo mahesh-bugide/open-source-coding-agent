@@ -8,7 +8,7 @@ Deliver a working self-hosted coding agent MVP with VS Code integration, typed t
 Files likely to change:
 - [services/api](services/api)
 - [vscode-extension](vscode-extension)
-- [infrastructure/terraform](infrastructure/terraform)
+- [scripts/aws](scripts/aws)
 
 Architecture impact:
 Baseline architecture is established and modularized.
@@ -100,7 +100,6 @@ Replace dev API key with enterprise identity and access control.
 
 Files likely to change:
 - [services/api/src/enterprise_agent/core/auth.py](services/api/src/enterprise_agent/core/auth.py)
-- [infrastructure/terraform](infrastructure/terraform)
 
 Architecture impact:
 Adds identity provider trust and token validation path.
@@ -171,7 +170,7 @@ Objective:
 Scale inference capacity by load and queue depth.
 
 Files likely to change:
-- [infrastructure/terraform/modules/compute/main.tf](infrastructure/terraform/modules/compute/main.tf)
+- one instance's `docker-compose.gpu.yml` scaling config or a future autoscaling group definition
 - [inference](inference)
 
 Architecture impact:
