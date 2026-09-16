@@ -2,10 +2,11 @@
 
 This directory contains the vLLM model server for:
 
-- Model: `Qwen/Qwen2.5-Coder-1.5B-Instruct` (fits a single T4/g4dn-class GPU; swap `MODEL_NAME` for a larger model if you have more VRAM)
+- Model: `Qwen/Qwen2.5-Coder-7B-Instruct-AWQ` (INT4 quantized, fits a single T4 16GB GPU with headroom for context)
 - API: OpenAI-compatible (`/v1/chat/completions`)
-- Target context: 4K (raise `MAX_MODEL_LEN` if your GPU has more VRAM)
+- Target context: 8K (raise `MAX_MODEL_LEN` if your GPU has more VRAM)
 - Target GPU: any CUDA GPU with >=16GB VRAM (e.g. NVIDIA T4 / g4dn instance family)
+- Quantization: set `QUANTIZATION=awq` (default) to match the AWQ-quantized model; clear it if you switch to a non-quantized model
 
 ## Security
 
@@ -25,7 +26,8 @@ This directory contains the vLLM model server for:
 docker build -t enterprise-vllm ./inference
 docker run --gpus all --rm -p 8001:8001 \
   -e HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN \
-  -e MODEL_NAME=Qwen/Qwen2.5-Coder-1.5B-Instruct \
+  -e MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct-AWQ \
+  -e QUANTIZATION=awq \
   enterprise-vllm
 ```
 
@@ -40,5 +42,5 @@ curl http://localhost:8001/health
 ```bash
 curl http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen2.5-Coder-1.5B-Instruct","messages":[{"role":"user","content":"hello"}]}'
+  -d '{"model":"Qwen/Qwen2.5-Coder-7B-Instruct-AWQ","messages":[{"role":"user","content":"hello"}]}'
 ```

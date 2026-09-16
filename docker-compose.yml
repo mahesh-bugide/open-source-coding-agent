@@ -22,10 +22,12 @@ services:
       DEV_API_KEY: dev-local-key
       REQUIRE_API_KEY: "true"
       SANDBOX_MODE: local
+      ALLOWED_WORKSPACE_ROOT: /workspace/coding-agent
     ports:
       - "8080:8080"
     volumes:
       - agent-data:/app/data
+      - ./:/workspace/coding-agent
     depends_on:
       - mock-model
 
@@ -36,9 +38,10 @@ services:
     profiles: ["gpu"]
     runtime: nvidia
     environment:
-      MODEL_NAME: Qwen/Qwen2.5-Coder-1.5B-Instruct
-      MAX_MODEL_LEN: 4096
+      MODEL_NAME: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+      MAX_MODEL_LEN: 8192
       GPU_MEMORY_UTILIZATION: 0.85
+      QUANTIZATION: awq
     ports:
       - "8002:8001"
 
