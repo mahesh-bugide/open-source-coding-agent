@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Minimal single-instance stack: no Postgres/Redis containers required.
 # API falls back to SQLite (file-backed) and in-memory cache automatically.
 services:
