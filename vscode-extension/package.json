@@ -1,0 +1,53 @@
+{
+  "name": "enterprise-ai-coding-agent",
+  "displayName": "Enterprise AI Coding Agent",
+  "description": "MVP self-hosted AI coding agent extension",
+  "version": "0.1.0",
+  "publisher": "hackathon",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:enterpriseAgent.open"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "enterpriseAgent.open",
+        "title": "AI Coding Agent: Open"
+      }
+    ],
+    "configuration": {
+      "title": "Enterprise AI Coding Agent",
+      "properties": {
+        "enterpriseAgent.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Backend API base URL"
+        },
+        "enterpriseAgent.apiKey": {
+          "type": "string",
+          "default": "dev-local-key",
+          "description": "Development API key"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
+    "typescript": "^5.9.2",
+    "eslint": "^9.35.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "@typescript-eslint/eslint-plugin": "^8.43.0"
+  }
+}

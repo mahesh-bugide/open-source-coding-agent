@@ -1,0 +1,11 @@
+project_name = "enterprise-ai-coding-agent"
+environment  = "dev"
+aws_region   = "us-east-1"
+
+api_image   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/enterprise-ai-coding-agent-dev-api:latest"
+agent_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/enterprise-ai-coding-agent-dev-agent:latest"
+vllm_image  = "123456789012.dkr.ecr.us-east-1.amazonaws.com/enterprise-ai-coding-agent-dev-vllm:latest"
+
+db_username = "agent"
+db_password = "CHANGE_ME"
+dev_api_key = "CHANGE_ME"

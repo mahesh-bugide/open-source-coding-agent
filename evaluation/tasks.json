@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bug-auth-timeout",
+    "task": "Fix the authentication timeout bug and update the tests.",
+    "workspace_path": "examples/sample-repository"
+  },
+  {
+    "id": "bug-billing-order",
+    "task": "Fix the billing tax and discount order bug and update tests.",
+    "workspace_path": "examples/sample-repository"
+  },
+  {
+    "id": "feature-formal-greeting",
+    "task": "Add a formal greeting mode and corresponding tests.",
+    "workspace_path": "examples/sample-repository"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "name": "enterprise-ai-coding-agent-dev",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {},
+  "postCreateCommand": "echo Devcontainer ready",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

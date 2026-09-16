@@ -1,0 +1,41 @@
+Metadata-Version: 2.4
+Name: enterprise-ai-coding-agent-api
+Version: 0.1.0
+Summary: MVP backend for an enterprise self-hosted AI coding agent
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi==0.116.1
+Requires-Dist: uvicorn[standard]==0.35.0
+Requires-Dist: pydantic==2.11.7
+Requires-Dist: pydantic-settings==2.10.1
+Requires-Dist: sqlalchemy==2.0.36
+Requires-Dist: psycopg[binary]==3.2.9
+Requires-Dist: aiosqlite==0.21.0
+Requires-Dist: alembic==1.16.5
+Requires-Dist: httpx==0.28.1
+Requires-Dist: redis==5.2.1
+Requires-Dist: tree-sitter==0.25.1
+Requires-Dist: python-multipart==0.0.20
+Provides-Extra: dev
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: pytest-asyncio==1.2.0; extra == "dev"
+Requires-Dist: ruff==0.13.0; extra == "dev"
+Requires-Dist: mypy==1.18.1; extra == "dev"
+Requires-Dist: types-redis==4.6.0.20241004; extra == "dev"
+
+# Enterprise AI Coding Agent API
+
+FastAPI service containing the MVP agent orchestration runtime, typed tools, session APIs, and SSE event streaming.
+
+## Run
+
+```bash
+pip install -e .[dev]
+uvicorn enterprise_agent.main:app --reload --host 0.0.0.0 --port 8080
+```
+
+## Test
+
+```bash
+pytest
+```
