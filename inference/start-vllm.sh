@@ -17,7 +17,7 @@ if [[ -n "$QUANTIZATION" ]]; then
   QUANTIZATION_FLAG=(--quantization "$QUANTIZATION")
 fi
 
-python -m vllm.entrypoints.openai.api_server \
+python3 -m vllm.entrypoints.openai.api_server \
   --host "$HOST" \
   --port "$PORT" \
   --model "$MODEL_NAME" \
