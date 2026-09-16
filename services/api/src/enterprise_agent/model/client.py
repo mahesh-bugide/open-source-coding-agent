@@ -164,7 +164,7 @@ class OpenAICompatModelGateway(ModelGateway):
         )
         result = await self._chat(prompt)
         parsed = self._extract_json(result)
-        edits = parsed.get("edits", [])
+        edits = parsed if isinstance(parsed, list) else parsed.get("edits", [])
         return [FileEditProposal.model_validate(edit) for edit in edits]
 
     async def analyze_failure(self, task: str, test_output: str) -> str:
