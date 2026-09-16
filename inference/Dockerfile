@@ -16,4 +16,4 @@ EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD /app/healthcheck.sh
 
-CMD ["/app/start-vllm.sh"]
+ENTRYPOINT ["/app/start-vllm.sh"]
