@@ -45,6 +45,11 @@ class RepositoryContextBuilder:
             if path not in unique_paths:
                 unique_paths.append(path)
 
+        for filename in self._filenames_from_task(task):
+            for tree_path in tree:
+                if tree_path.endswith(filename) and tree_path not in unique_paths:
+                    unique_paths.append(tree_path)
+
         files: list[ContextFile] = []
         for path in unique_paths[:8]:
             read_output = self._file_tools.read_file(ReadFileInput(path=path, start_line=1, end_line=300))
@@ -60,4 +65,12 @@ class RepositoryContextBuilder:
             if word not in unique:
                 unique.append(word)
         return unique[:5] or [task[:40]]
+
+    def _filenames_from_task(self, task: str) -> list[str]:
+        candidates = re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,10}\b", task)
+        unique: list[str] = []
+        for name in candidates:
+            if name not in unique:
+                unique.append(name)
+        return unique
 
