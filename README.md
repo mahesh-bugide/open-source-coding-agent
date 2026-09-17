@@ -104,6 +104,10 @@ See [AWS.md](AWS.md), [DEPLOYMENT.md](DEPLOYMENT.md), and [scripts/aws/README.md
   - `enterpriseAgent.apiBaseUrl` (default `http://localhost:8080`)
   - `enterpriseAgent.apiKey` (default `dev-local-key`)
 
+## 9) Demo Web UI (no build step)
+
+For a quick live demo without VS Code, open [ui/index.html](ui/index.html) directly in a browser. Supports Ask mode (Q&A, no edits) and Agent mode (full edit/test loop with live streaming and diff review). See [ui/README.md](ui/README.md).
+
 ## Project layout
 
 - [services/api](services/api): FastAPI API + orchestrator + tools

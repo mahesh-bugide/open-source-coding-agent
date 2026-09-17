@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Enterprise Coding Agent — Demo UI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+  }
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+  }
+  header .badge {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 3px 10px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    padding: 16px;
+    height: calc(100vh - 60px);
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    overflow-y: auto;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 10px 0 4px;
+  }
+  input[type=text], textarea {
+    width: 100%;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  button {
+    background: var(--accent);
+    color: #0d1117;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  button.danger {
+    background: var(--red);
+    color: #fff;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .tabs { display: flex; gap: 8px; margin: 14px 0; }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.08); }
+  .main { display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  #answerBox {
+    white-space: pre-wrap;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 60px;
+  }
+  #eventLog {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    height: 220px;
+    overflow-y: auto;
+  }
+  .ev { margin-bottom: 4px; }
+  .ev .type { color: var(--accent); font-weight: 600; }
+  .ev.fail .type { color: var(--red); }
+  .ev.pass .type { color: var(--green); }
+  #diffBox {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    white-space: pre;
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .diff-add { color: var(--green); }
+  .diff-del { color: var(--red); }
+  .diff-hunk { color: var(--yellow); }
+  .status-pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .status-pill.running { color: var(--yellow); border-color: var(--yellow); }
+  .status-pill.success { color: var(--green); border-color: var(--green); }
+  .status-pill.failed { color: var(--red); border-color: var(--red); }
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 Enterprise Coding Agent — Live Demo</h1>
+  <span class="badge">Self-hosted &middot; Open-source model &middot; Ask + Agent modes</span>
+</header>
+
+<div class="layout">
+  <div class="panel">
+    <h3 style="margin-top:0; font-size:13px; color:var(--muted); text-transform:uppercase;">Connection</h3>
+    <label>API base URL</label>
+    <input type="text" id="apiBase" value="http://127.0.0.1:8080" />
+
+    <label>API key</label>
+    <input type="text" id="apiKey" value="dev-local-key" />
+
+    <label>Workspace path (inside API container)</label>
+    <input type="text" id="workspacePath" value="/workspace/coding-agent/examples/sample-repository" />
+
+    <button id="newSessionBtn">New Session</button>
+    <div class="hint" id="sessionInfo">No active session.</div>
+
+    <hr style="border-color: var(--border); margin: 16px 0;" />
+
+    <h3 style="font-size:13px; color:var(--muted); text-transform:uppercase;">Metrics</h3>
+    <div class="hint" id="metricsBox">Not loaded yet.</div>
+    <button class="secondary" id="refreshMetricsBtn">Refresh metrics</button>
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" data-mode="ask">💬 Ask Mode (Q&amp;A, no edits)</div>
+      <div class="tab" data-mode="agent">🛠️ Agent Mode (edit + test loop)</div>
+    </div>
+
+    <div class="card" id="askPanel">
+      <h3>Ask a question</h3>
+      <textarea id="askInput" placeholder="e.g. What does billing_calculator.py do?"></textarea>
+      <button id="askBtn">Ask</button>
+      <div style="margin-top:14px;">
+        <h3>Answer</h3>
+        <div id="answerBox">—</div>
+      </div>
+    </div>
+
+    <div class="card" id="agentPanel" style="display:none;">
+      <h3>Task for the agent</h3>
+      <textarea id="agentInput" placeholder="e.g. Read TASKS.md and fix one safe small bug, then run tests."></textarea>
+      <div class="row">
+        <button id="runAgentBtn">Run Agent</button>
+        <button class="secondary" id="cancelBtn">Cancel</button>
+      </div>
+      <div style="margin-top:12px;">
+        <h3>Live progress <span class="status-pill" id="statusPill">idle</span></h3>
+        <div id="eventLog"></div>
+      </div>
+      <div style="margin-top:12px;">
+        <h3>Diff</h3>
+        <div id="diffBox">No result yet.</div>
+        <div class="actions">
+          <button id="applyBtn" disabled>Apply changes</button>
+          <button class="danger" id="rejectBtn" disabled>Reject changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const el = (id) => document.getElementById(id);
+let sessionId = null;
+let currentAbort = null;
+
+function apiBase() { return el('apiBase').value.replace(/\/$/, ''); }
+function apiKey() { return el('apiKey').value; }
+function headers(json = true) {
+  const h = { 'x-api-key': apiKey() };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const mode = tab.dataset.mode;
+    el('askPanel').style.display = mode === 'ask' ? 'block' : 'none';
+    el('agentPanel').style.display = mode === 'agent' ? 'block' : 'none';
+  });
+});
+
+el('newSessionBtn').addEventListener('click', async () => {
+  el('sessionInfo').textContent = 'Creating session...';
+  try {
+    const res = await fetch(`${apiBase()}/v1/sessions`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ workspace_path: el('workspacePath').value }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed to create session');
+    sessionId = data.session_id;
+    el('sessionInfo').innerHTML = `Session: <code>${sessionId}</code>`;
+  } catch (err) {
+    el('sessionInfo').textContent = `Error: ${err.message}`;
+  }
+});
+
+el('refreshMetricsBtn').addEventListener('click', async () => {
+  try {
+    const res = await fetch(`${apiBase()}/metrics`, { headers: headers(false) });
+    const data = await res.json();
+    el('metricsBox').innerHTML = Object.entries(data)
+      .map(([k, v]) => `${k}: <b>${v}</b>`)
+      .join('<br/>');
+  } catch (err) {
+    el('metricsBox').textContent = `Error: ${err.message}`;
+  }
+});
+
+el('askBtn').addEventListener('click', async () => {
+  if (!sessionId) { alert('Create a session first.'); return; }
+  const question = el('askInput').value.trim();
+  if (!question) return;
+  el('answerBox').textContent = 'Thinking...';
+  el('askBtn').disabled = true;
+  try {
+    const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/ask`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ask failed');
+    el('answerBox').textContent = data.answer;
+  } catch (err) {
+    el('answerBox').textContent = `Error: ${err.message}`;
+  } finally {
+    el('askBtn').disabled = false;
+  }
+});
+
+function logEvent(type, payload) {
+  const log = el('eventLog');
+  const div = document.createElement('div');
+  div.className = 'ev' + (type === 'agent_failed' ? ' fail' : type === 'agent_completed' ? ' pass' : '');
+  div.innerHTML = `<span class="type">${type}</span> ${escapeHtml(JSON.stringify(payload))}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+function setStatus(text, cls) {
+  const pill = el('statusPill');
+  pill.textContent = text;
+  pill.className = 'status-pill ' + (cls || '');
+}
+
+function renderDiff(diffText) {
+  if (!diffText) { el('diffBox').textContent = 'No changes produced.'; return; }
+  const lines = diffText.split('\n').map(line => {
+    let cls = '';
+    if (line.startsWith('+') && !line.startsWith('+++')) cls = 'diff-add';
+    else if (line.startsWith('-') && !line.startsWith('---')) cls = 'diff-del';
+    else if (line.startsWith('@@')) cls = 'diff-hunk';
+    const safe = escapeHtml(line);
+    return cls ? `<span class="${cls}">${safe}</span>` : safe;
+  });
+  el('diffBox').innerHTML = lines.join('\n');
+}
+
+async function streamEvents(sessionId, onDone) {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/stream`, {
+    headers: headers(false),
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop();
+    for (const part of parts) {
+      const line = part.split('\n').find(l => l.startsWith('data: '));
+      if (!line) continue;
+      try {
+        const evt = JSON.parse(line.slice(6));
+        logEvent(evt.type, evt.payload);
+        if (evt.type === 'agent_completed' || evt.type === 'agent_failed') {
+          onDone(evt.type === 'agent_completed');
+          return;
+        }
+      } catch (e) { /* ignore keepalive/parse noise */ }
+    }
+  }
+}
+
+el('runAgentBtn').addEventListener('click', async () => {
+  if (!sessionId) { alert('Create a session first.'); return; }
+  const message = el('agentInput').value.trim();
+  if (!message) return;
+
+  el('eventLog').innerHTML = '';
+  el('diffBox').textContent = 'Running...';
+  el('applyBtn').disabled = true;
+  el('rejectBtn').disabled = true;
+  el('runAgentBtn').disabled = true;
+  setStatus('running', 'running');
+
+  try {
+    const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed to start run');
+
+    await streamEvents(sessionId, async (success) => {
+      setStatus(success ? 'success' : 'failed', success ? 'success' : 'failed');
+      const resultRes = await fetch(`${apiBase()}/v1/sessions/${sessionId}/result`, { headers: headers(false) });
+      const result = await resultRes.json();
+      renderDiff(result.diff);
+      const hasChanges = (result.changed_files || []).length > 0;
+      el('applyBtn').disabled = !hasChanges;
+      el('rejectBtn').disabled = !hasChanges;
+      el('runAgentBtn').disabled = false;
+    });
+  } catch (err) {
+    setStatus('failed', 'failed');
+    logEvent('client_error', { message: err.message });
+    el('runAgentBtn').disabled = false;
+  }
+});
+
+el('cancelBtn').addEventListener('click', async () => {
+  if (!sessionId) return;
+  await fetch(`${apiBase()}/v1/sessions/${sessionId}/cancel`, { method: 'POST', headers: headers(false) });
+  setStatus('cancelling', 'failed');
+});
+
+el('applyBtn').addEventListener('click', async () => {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/apply`, { method: 'POST', headers: headers(false) });
+  const data = await res.json();
+  alert(res.ok ? `Applied: ${data.applied_files.join(', ') || '(no files)'}` : (data.detail || 'Apply failed'));
+});
+
+el('rejectBtn').addEventListener('click', async () => {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/reject`, { method: 'POST', headers: headers(false) });
+  if (res.ok) {
+    el('diffBox').textContent = 'Rejected.';
+    el('applyBtn').disabled = true;
+    el('rejectBtn').disabled = true;
+  }
+});
+</script>
+
+</body>
+</html>
