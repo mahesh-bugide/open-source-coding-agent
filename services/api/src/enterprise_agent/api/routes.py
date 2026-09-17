@@ -179,7 +179,7 @@ async def send_message(
                 {"status": "running", "session_id": session_id},
                 ttl_sec=60 * 60 * 8,
             )
-            result = await orchestrator.run(payload.message)
+            result = await orchestrator.run(payload.message, attachments=payload.attachments)
             runtime.latest_result = result
         except Exception as exc:
             logger.exception("agent_run_failed", extra={"session_id": session_id, "run_id": run_id})
@@ -260,7 +260,7 @@ async def ask_question(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     context_builder = RepositoryContextBuilder(runtime.workspace_path)
-    context = context_builder.build(payload.question)
+    context = context_builder.build(payload.question, attachments=payload.attachments)
 
     model = create_model_gateway(request.app.state.settings)
     answer = await model.answer_question(payload.question, context)
@@ -398,4 +398,5 @@ async def get_result(
         changed_files=result.changed_files,
         diff=result.diff,
         iterations=result.iterations,
+        limitations=result.limitations,
     )

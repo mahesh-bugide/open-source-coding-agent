@@ -31,6 +31,9 @@ class ModelGateway:
     async def analyze_failure(self, task: str, test_output: str) -> str:
         raise NotImplementedError
 
+    async def form_change_plan(self, task: str, context: RepositoryContext) -> str:
+        raise NotImplementedError
+
     async def answer_question(self, question: str, context: RepositoryContext) -> str:
         raise NotImplementedError
 
@@ -121,6 +124,11 @@ class MockModelGateway(ModelGateway):
         head = "\n".join(test_output.splitlines()[:20])
         return f"Test failure analysis for task '{task}': {head}"
 
+    async def form_change_plan(self, task: str, context: RepositoryContext) -> str:
+        self._usage.input_tokens += max(len(task) // 4, 1)
+        self._usage.output_tokens += 25
+        return f"Change plan for '{task}': edit {len(context.files)} candidate file(s) based on gathered context."
+
     async def answer_question(self, question: str, context: RepositoryContext) -> str:
         self._usage.input_tokens += max(len(question) // 4, 1)
         self._usage.output_tokens += 30
@@ -179,6 +187,15 @@ class OpenAICompatModelGateway(ModelGateway):
         prompt = (
             "Analyze this failing test output and provide a concise diagnosis and fix hypothesis. "
             f"Task: {task}\nOutput:\n{test_output[:12000]}"
+        )
+        return (await self._chat(prompt)).strip()
+
+    async def form_change_plan(self, task: str, context: RepositoryContext) -> str:
+        file_paths = [item.path for item in context.files]
+        prompt = (
+            "Based on the task and the files already read below, describe in 2-4 concise sentences "
+            "the concrete change plan you intend to make. Do not write code, just describe the approach.\n"
+            f"Task: {task}\nFiles read: {file_paths}"
         )
         return (await self._chat(prompt)).strip()
 

@@ -29,7 +29,7 @@ class RepositoryContextBuilder:
         self._file_tools = FileTools(workspace_root)
         self._symbol_extractor = SymbolExtractor()
 
-    def build(self, task: str) -> RepositoryContext:
+    def build(self, task: str, attachments: list[str] | None = None) -> RepositoryContext:
         tree = self._file_tools.list_files(ListFilesInput(max_depth=4)).files[:200]
 
         queries = self._queries_from_task(task)
@@ -39,7 +39,15 @@ class RepositoryContextBuilder:
             for match in output.matches:
                 search_hits.append(match.model_dump())
 
-        unique_paths: list[str] = []
+        # Explicitly attached files (like an IDE's @file mention) always win and are
+        # never dropped by the later file cap, regardless of search/keyword matching.
+        attached_paths: list[str] = []
+        for raw_path in attachments or []:
+            normalized = raw_path.strip().lstrip("@").strip()
+            if normalized and normalized not in attached_paths:
+                attached_paths.append(normalized)
+
+        unique_paths: list[str] = list(attached_paths)
         for hit in search_hits:
             path = hit["path"]
             if path not in unique_paths:
@@ -51,8 +59,12 @@ class RepositoryContextBuilder:
                     unique_paths.append(tree_path)
 
         files: list[ContextFile] = []
-        for path in unique_paths[:8]:
-            read_output = self._file_tools.read_file(ReadFileInput(path=path, start_line=1, end_line=300))
+        slot_limit = max(8, len(attached_paths))
+        for path in unique_paths[:slot_limit]:
+            try:
+                read_output = self._file_tools.read_file(ReadFileInput(path=path, start_line=1, end_line=300))
+            except Exception:
+                continue
             symbols = self._symbol_extractor.extract(path, read_output.content)
             files.append(ContextFile(path=path, content=read_output.content, symbols=symbols))
 

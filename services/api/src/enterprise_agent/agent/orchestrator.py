@@ -35,6 +35,7 @@ class AgentRunResult(BaseModel):
     output_tokens: int
     error: str | None = None
     sandbox_path: str
+    limitations: list[str] = []
 
 
 @dataclass(slots=True)
@@ -72,7 +73,7 @@ class AgentOrchestrator:
     def cancel(self) -> None:
         self._cancel_event.set()
 
-    async def run(self, task: str) -> AgentRunResult:
+    async def run(self, task: str, attachments: list[str] | None = None) -> AgentRunResult:
         start = time.perf_counter()
         state = AgentState.START
         iterations = 0
@@ -80,6 +81,8 @@ class AgentOrchestrator:
         plan = AgentPlan()
         model_usage = ModelUsage()
         edited_paths: list[str] = []
+        attachments = attachments or []
+        limitations: list[str] = []
 
         sandbox_workspace = self._create_sandbox_workspace()
         tool_registry = ToolRegistry(sandbox_workspace, self._settings)
@@ -106,14 +109,31 @@ class AgentOrchestrator:
                     continue
 
                 if state == AgentState.UNDERSTAND:
-                    context = await asyncio.to_thread(context_builder.build, task)
+                    context = await asyncio.to_thread(context_builder.build, task, attachments)
                     summary = await model.understand(task, context)
                     await self._emit("agent_message", {"message": summary, "state": state.value})
+                    state = AgentState.INSPECT_WORKSPACE
+                    continue
+
+                if state == AgentState.INSPECT_WORKSPACE:
+                    instructions_found = self._inspect_workspace_instructions(sandbox_workspace)
+                    if instructions_found:
+                        found_list = ", ".join(instructions_found)
+                        await self._emit(
+                            "agent_message",
+                            {"message": f"Found project instructions: {found_list}", "state": state.value},
+                        )
+                    else:
+                        limitations.append("No project instruction files (AGENTS.md/README.md/.cursorrules) found.")
+                        await self._emit(
+                            "agent_message",
+                            {"message": "No project instruction files found in workspace.", "state": state.value},
+                        )
                     state = AgentState.PLAN
                     continue
 
                 if state == AgentState.PLAN:
-                    context = await asyncio.to_thread(context_builder.build, task)
+                    context = await asyncio.to_thread(context_builder.build, task, attachments)
                     plan = await model.plan(task, context)
                     await self._emit(
                         "agent_thinking",
@@ -142,7 +162,13 @@ class AgentOrchestrator:
                     continue
 
                 if state == AgentState.READ:
-                    context = await asyncio.to_thread(context_builder.build, task)
+                    context = await asyncio.to_thread(context_builder.build, task, attachments)
+                    if not context.files:
+                        limitations.append("No relevant files were found via search/attachments/filename match.")
+                    elif len(context.files) >= 8:
+                        limitations.append(
+                            f"Context capped at {len(context.files)} files; some repository content may be unread."
+                        )
                     await self._emit(
                         "agent_message",
                         {
@@ -151,6 +177,13 @@ class AgentOrchestrator:
                             "files": [item.path for item in context.files],
                         },
                     )
+                    state = AgentState.FORM_CHANGE_PLAN
+                    continue
+
+                if state == AgentState.FORM_CHANGE_PLAN:
+                    context = await asyncio.to_thread(context_builder.build, task, attachments)
+                    change_plan = await model.form_change_plan(task, context)
+                    await self._emit("agent_message", {"message": change_plan, "state": state.value})
                     state = AgentState.EDIT
                     continue
 
@@ -161,7 +194,7 @@ class AgentOrchestrator:
                         await self._emit("agent_failed", {"reason": "max_iterations_reached"})
                         break
 
-                    context = await asyncio.to_thread(context_builder.build, task)
+                    context = await asyncio.to_thread(context_builder.build, task, attachments)
                     edits = await model.propose_edits(task, context, iterations, failure_output)
 
                     if not edits:
@@ -181,6 +214,22 @@ class AgentOrchestrator:
                         await self._emit(
                             "file_changed",
                             {"path": edit.path, "reason": edit.reason},
+                        )
+                    state = AgentState.DIFF_REVIEW
+                    continue
+
+                if state == AgentState.DIFF_REVIEW:
+                    try:
+                        diff_output = await self._execute_tool(tool_registry, "git_diff", {})
+                        await self._emit(
+                            "diff_ready",
+                            {"diff": diff_output.get("diff", ""), "changed_files": edited_paths},
+                        )
+                    except Exception:
+                        limitations.append("Workspace is not a git repository; diff review was skipped.")
+                        await self._emit(
+                            "agent_message",
+                            {"message": "Skipping diff review (no git repo).", "state": state.value},
                         )
                     state = AgentState.TEST
                     continue
@@ -234,6 +283,10 @@ class AgentOrchestrator:
 
         model_usage = model.last_usage()
         success = state == AgentState.COMPLETE
+        if iterations >= self._settings.max_agent_iterations and not success:
+            limitations.append("Max iterations reached without a passing test run.")
+        if plan.test_command == "pytest -q":
+            limitations.append("Test command used the default 'pytest -q', not scoped to only the changed files.")
 
         await self._emit(
             "agent_completed" if success else "agent_failed",
@@ -245,6 +298,7 @@ class AgentOrchestrator:
                 "diff": diff_text,
                 "input_tokens": model_usage.input_tokens,
                 "output_tokens": model_usage.output_tokens,
+                "limitations": limitations,
             },
         )
 
@@ -263,6 +317,7 @@ class AgentOrchestrator:
             output_tokens=model_usage.output_tokens,
             error=None if success else state.value,
             sandbox_path=str(sandbox_workspace),
+            limitations=limitations,
         )
 
     async def _execute_tool(self, registry: ToolRegistry, tool: str, payload: dict) -> dict:
@@ -293,3 +348,19 @@ class AgentOrchestrator:
             if len(parts) == 2:
                 paths.append(parts[1])
         return paths
+
+    def _inspect_workspace_instructions(self, workspace: Path) -> list[str]:
+        candidates = ["AGENTS.md", "README.md", ".cursorrules", "CONTRIBUTING.md"]
+        found: list[str] = []
+        for name in candidates:
+            if (workspace / name).is_file():
+                found.append(name)
+        return found
+
+    def _inspect_workspace_instructions(self, workspace: Path) -> list[str]:
+        candidates = ["AGENTS.md", "README.md", ".cursorrules", "CONTRIBUTING.md"]
+        found: list[str] = []
+        for name in candidates:
+            if (workspace / name).is_file():
+                found.append(name)
+        return found

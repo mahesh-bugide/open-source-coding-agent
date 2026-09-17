@@ -14,6 +14,7 @@ class CreateSessionResponse(BaseModel):
 
 class SendMessageRequest(BaseModel):
     message: str = Field(min_length=1)
+    attachments: list[str] = Field(default_factory=list)
 
 
 class SendMessageResponse(BaseModel):
@@ -24,6 +25,7 @@ class SendMessageResponse(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1)
+    attachments: list[str] = Field(default_factory=list)
 
 
 class AskResponse(BaseModel):
@@ -58,6 +60,7 @@ class SessionResultResponse(BaseModel):
     changed_files: list[str]
     diff: str
     iterations: int
+    limitations: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

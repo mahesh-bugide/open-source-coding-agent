@@ -201,6 +201,8 @@
     <div class="card" id="askPanel">
       <h3>Ask a question</h3>
       <textarea id="askInput" placeholder="e.g. What does billing_calculator.py do?"></textarea>
+      <label>Attach files (comma-separated paths, like Cursor's @file)</label>
+      <input type="text" id="askAttachments" placeholder="e.g. src/billing_calculator.py, tests/test_billing_calculator.py" />
       <button id="askBtn">Ask</button>
       <div style="margin-top:14px;">
         <h3>Answer</h3>
@@ -211,6 +213,8 @@
     <div class="card" id="agentPanel" style="display:none;">
       <h3>Task for the agent</h3>
       <textarea id="agentInput" placeholder="e.g. Read TASKS.md and fix one safe small bug, then run tests."></textarea>
+      <label>Attach files (comma-separated paths, like Cursor's @file)</label>
+      <input type="text" id="agentAttachments" placeholder="e.g. src/billing_calculator.py" />
       <div class="row">
         <button id="runAgentBtn">Run Agent</button>
         <button class="secondary" id="cancelBtn">Cancel</button>
@@ -226,6 +230,7 @@
           <button id="applyBtn" disabled>Apply changes</button>
           <button class="danger" id="rejectBtn" disabled>Reject changes</button>
         </div>
+        <div id="limitationsBox" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
       </div>
     </div>
   </div>
@@ -283,17 +288,22 @@ el('refreshMetricsBtn').addEventListener('click', async () => {
   }
 });
 
+function parseAttachments(rawValue) {
+  return rawValue.split(',').map(s => s.trim()).filter(Boolean);
+}
+
 el('askBtn').addEventListener('click', async () => {
   if (!sessionId) { alert('Create a session first.'); return; }
   const question = el('askInput').value.trim();
   if (!question) return;
+  const attachments = parseAttachments(el('askAttachments').value);
   el('answerBox').textContent = 'Thinking...';
   el('askBtn').disabled = true;
   try {
     const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/ask`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, attachments }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ask failed');
@@ -365,13 +375,25 @@ async function streamEvents(sessionId, onDone) {
   }
 }
 
+function renderLimitations(limitations) {
+  const box = el('limitationsBox');
+  if (!limitations || limitations.length === 0) {
+    box.textContent = '';
+    return;
+  }
+  box.innerHTML = '<b>Limitations:</b><ul style="margin:4px 0 0 18px; padding:0;">' +
+    limitations.map(l => `<li>${escapeHtml(l)}</li>`).join('') + '</ul>';
+}
+
 el('runAgentBtn').addEventListener('click', async () => {
   if (!sessionId) { alert('Create a session first.'); return; }
   const message = el('agentInput').value.trim();
   if (!message) return;
+  const attachments = parseAttachments(el('agentAttachments').value);
 
   el('eventLog').innerHTML = '';
   el('diffBox').textContent = 'Running...';
+  el('limitationsBox').textContent = '';
   el('applyBtn').disabled = true;
   el('rejectBtn').disabled = true;
   el('runAgentBtn').disabled = true;
@@ -381,7 +403,7 @@ el('runAgentBtn').addEventListener('click', async () => {
     const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/messages`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, attachments }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Failed to start run');
@@ -391,6 +413,7 @@ el('runAgentBtn').addEventListener('click', async () => {
       const resultRes = await fetch(`${apiBase()}/v1/sessions/${sessionId}/result`, { headers: headers(false) });
       const result = await resultRes.json();
       renderDiff(result.diff);
+      renderLimitations(result.limitations);
       const hasChanges = (result.changed_files || []).length > 0;
       el('applyBtn').disabled = !hasChanges;
       el('rejectBtn').disabled = !hasChanges;
