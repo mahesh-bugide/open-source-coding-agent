@@ -1,7 +1,7 @@
 FROM vllm/vllm-openai:v0.8.4
 
 ENV MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct-AWQ \
-    MAX_MODEL_LEN=8192 \
+    MAX_MODEL_LEN=32768 \
     GPU_MEMORY_UTILIZATION=0.85 \
     QUANTIZATION=awq
 
