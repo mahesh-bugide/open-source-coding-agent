@@ -31,6 +31,9 @@ class ModelGateway:
     async def analyze_failure(self, task: str, test_output: str) -> str:
         raise NotImplementedError
 
+    async def answer_question(self, question: str, context: RepositoryContext) -> str:
+        raise NotImplementedError
+
     def last_usage(self) -> ModelUsage:
         raise NotImplementedError
 
@@ -118,6 +121,11 @@ class MockModelGateway(ModelGateway):
         head = "\n".join(test_output.splitlines()[:20])
         return f"Test failure analysis for task '{task}': {head}"
 
+    async def answer_question(self, question: str, context: RepositoryContext) -> str:
+        self._usage.input_tokens += max(len(question) // 4, 1)
+        self._usage.output_tokens += 30
+        return f"Mock answer for '{question}'. Relevant files found: {len(context.files)}"
+
     def last_usage(self) -> ModelUsage:
         return self._usage
 
@@ -171,6 +179,16 @@ class OpenAICompatModelGateway(ModelGateway):
         prompt = (
             "Analyze this failing test output and provide a concise diagnosis and fix hypothesis. "
             f"Task: {task}\nOutput:\n{test_output[:12000]}"
+        )
+        return (await self._chat(prompt)).strip()
+
+    async def answer_question(self, question: str, context: RepositoryContext) -> str:
+        snippets = [f"{item.path}:\n{item.content[:2000]}" for item in context.files[:6]]
+        prompt = (
+            "You are a helpful coding assistant. Answer the question clearly and concisely based on "
+            "the repository context below. Do not propose file edits or run any tools; just answer.\n"
+            f"Question: {question}\n"
+            f"Relevant files:\n{chr(10).join(snippets) if snippets else 'none found'}"
         )
         return (await self._chat(prompt)).strip()
 

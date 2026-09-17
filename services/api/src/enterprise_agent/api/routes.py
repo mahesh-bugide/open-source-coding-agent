@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 from enterprise_agent.agent.orchestrator import AgentOrchestrator, AgentRunResult
 from enterprise_agent.api.schemas import (
     ApplyChangesResponse,
+    AskRequest,
+    AskResponse,
     CancelSessionResponse,
     CreateSessionRequest,
     CreateSessionResponse,
@@ -21,9 +23,11 @@ from enterprise_agent.api.schemas import (
     SendMessageResponse,
     SessionResultResponse,
 )
+from enterprise_agent.context.repository_context import RepositoryContextBuilder
 from enterprise_agent.core.auth import AuthContext, require_auth
 from enterprise_agent.core.security import resolve_safe_path, resolve_workspace_root
 from enterprise_agent.db.repository import PersistenceRepository
+from enterprise_agent.model.client import create_model_gateway
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -242,6 +246,39 @@ async def send_message(
     request.app.state.run_tasks[session_id] = task
 
     return SendMessageResponse(session_id=session_id, agent_run_id=run_id, status="running")
+
+
+@router.post("/v1/sessions/{session_id}/ask", response_model=AskResponse)
+async def ask_question(
+    session_id: str,
+    payload: AskRequest,
+    request: Request,
+    auth: AuthContext = Depends(require_auth),
+) -> AskResponse:
+    runtime = request.app.state.session_service.get_runtime(session_id)
+    if runtime is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    context_builder = RepositoryContextBuilder(runtime.workspace_path)
+    context = context_builder.build(payload.question)
+
+    model = create_model_gateway(request.app.state.settings)
+    answer = await model.answer_question(payload.question, context)
+    usage = model.last_usage()
+
+    async with request.app.state.database.session_factory() as db_session:
+        repo = PersistenceRepository(db_session)
+        await repo.add_message(session_id, auth.user_id, "user", payload.question)
+        await repo.add_message(session_id, auth.user_id, "assistant", answer)
+
+    return AskResponse(
+        session_id=session_id,
+        question=payload.question,
+        answer=answer,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        latency_ms=usage.latency_ms,
+    )
 
 
 @router.get("/v1/sessions/{session_id}/stream")

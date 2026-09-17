@@ -22,6 +22,19 @@ class SendMessageResponse(BaseModel):
     status: str
 
 
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1)
+
+
+class AskResponse(BaseModel):
+    session_id: str
+    question: str
+    answer: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+
+
 class CancelSessionResponse(BaseModel):
     session_id: str
     status: str
